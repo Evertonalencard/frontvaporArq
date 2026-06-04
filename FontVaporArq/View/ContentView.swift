@@ -39,6 +39,9 @@ struct ContentView: View {
             }
         }
         .frame(minWidth: 860, minHeight: 580)
+        .task {
+            await store.carregarContas()
+        }
     }
 }
 

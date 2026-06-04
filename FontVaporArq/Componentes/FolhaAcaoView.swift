@@ -115,7 +115,7 @@ struct FolhaAcaoView: View {
                                     Text(destino.nome)
                                         .font(.subheadline.weight(.semibold))
                                         .foregroundStyle(.branco)
-                                    Text(destino.tipo.rawValue)
+                                    Text(destino.tipo.titulo)
                                         .font(.caption)
                                         .foregroundStyle(.branco.opacity(0.5))
                                 }
@@ -195,7 +195,7 @@ struct FolhaAcaoView: View {
             // dados vêm do modelo, sem controller
             let dados = """
             Nome: \(conta.nome)
-            Tipo: \(conta.tipo.rawValue)
+            Tipo: \(conta.tipo.titulo)
             Saldo: \(formatarMoeda(conta.saldo))
             ID: \(conta.id.uuidString)
             """
@@ -267,10 +267,10 @@ struct FolhaAcaoView: View {
             return try await api.depositar(contaId: contaId, valor: valor)
         case .sacar:
             return try await api.sacar(contaId: contaId, valor: valor)
-            //        case .pix:
-            //            guard let destinoId = contaDestinoId else { throw URLError(.badURL) }
-            //            return try await api.pix(origemId: contaId, destinoId: destinoId, valor: valor)
-        case .pix, .transferencia, .pagEspecie, .salario:
+        case .pix:
+            guard let destinoId = contaDestinoId else { throw URLError(.badURL) }
+            return try await api.pix(origemId: contaId, destinoId: destinoId, valor: valor)
+        case  .pagEspecie, .salario:
             return ResultadoAPIDTO(
                 sucesso: false,
                 id: nil,
