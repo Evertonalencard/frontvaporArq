@@ -26,7 +26,7 @@ class BancoAPIClient {
     static let shared = BancoAPIClient()
 
     // URLs base de cada serviço
-    private let contaBaseURL = "https://contaprojvaporarquitetura-1.onrender.com"
+    private let contaBaseURL = "https://contaprojvaporarquitetura-2.onrender.com"
     private let pagamentoBaseURL  = "http://localhost:8081"  // Java/Spring
     private let cartaoBaseURL     = "http://localhost:8082"  // Java/Spring
     private let emprestimoBaseURL = "http://localhost:8083"  // Java/Spring
@@ -84,7 +84,16 @@ class BancoAPIClient {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(body)
-        let (data, _) = try await URLSession.shared.data(for: request)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        if let http = response as? HTTPURLResponse {
+            print("STATUS:", http.statusCode, "URL:", url)
+        }
+        if let json = String(data: data, encoding: .utf8) {
+            print("BODY:", json)
+        }
+
         return try JSONDecoder().decode(ResultadoAPIDTO.self, from: data)
     }
 
