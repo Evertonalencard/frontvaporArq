@@ -9,6 +9,6 @@ import Foundation
 struct ContaDTO: Codable {
     let id: UUID
     let nome: String
-    let saldo: Decimal
+    let saldo: Double
     let tipo: String
 }

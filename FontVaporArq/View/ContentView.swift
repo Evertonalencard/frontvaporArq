@@ -49,11 +49,20 @@ struct ContentView: View {
 
 // MARK: - Utilitário global de formatação
 
-func formatarMoeda(_ valor: Decimal) -> String {
+func formatarMoeda(_ valor: Double) -> String {
     let f = NumberFormatter()
     f.numberStyle = .currency
-    f.locale      = Locale(identifier: "pt_BR")
-    return f.string(from: valor as NSDecimalNumber) ?? "R$ \(valor)"
+    f.locale = Locale(identifier: "pt_BR")
+    // Use NSNumber for proper bridging
+    if let formatted = f.string(from: NSNumber(value: valor)) {
+        return formatted
+    }
+    // Fallback formatting in case the formatter fails for some reason
+    let symbol = f.currencySymbol ?? "R$"
+    f.minimumFractionDigits = 2
+    f.maximumFractionDigits = 2
+    let numberString = f.string(from: NSNumber(value: (valor as Double))) ?? String(format: "%.2f", valor)
+    return "\(symbol) \(numberString.replacingOccurrences(of: symbol, with: "").trimmingCharacters(in: .whitespaces))"
 }
 
 // MARK: - Preview

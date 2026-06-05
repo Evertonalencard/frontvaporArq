@@ -9,7 +9,7 @@
 import Foundation
 
 private struct ValorRequest: Encodable {
-    let valor: Decimal
+    let valor: Double
 }
 
 private struct NomeRequest: Encodable {
@@ -19,7 +19,7 @@ private struct NomeRequest: Encodable {
 private struct PixRequest: Encodable {
     let origemId: String
     let destinoId: String
-    let valor: Decimal
+    let valor: Double
 }
 
 class BancoAPIClient {
@@ -46,12 +46,12 @@ class BancoAPIClient {
         return try await post(url: endpoint, body: NomeRequest(nome: nome))
     }
 
-    func depositar(contaId: UUID, valor: Decimal) async throws -> ResultadoAPIDTO {
+    func depositar(contaId: UUID, valor: Double) async throws -> ResultadoAPIDTO {
         return try await post(url: "\(contaBaseURL)/contas/\(contaId)/depositar",
                               body: ValorRequest(valor: valor))
     }
 
-    func sacar(contaId: UUID, valor: Decimal) async throws -> ResultadoAPIDTO {
+    func sacar(contaId: UUID, valor: Double) async throws -> ResultadoAPIDTO {
         return try await post(url: "\(contaBaseURL)/contas/\(contaId)/sacar",
                               body: ValorRequest(valor: valor))
     }
@@ -62,7 +62,7 @@ class BancoAPIClient {
 
     // MARK: - Pagamento Service
 
-    func pix(origemId: UUID, destinoId: UUID, valor: Decimal) async throws -> ResultadoAPIDTO {
+    func pix(origemId: UUID, destinoId: UUID, valor: Double) async throws -> ResultadoAPIDTO {
         return try await post(url: "\(pagamentoBaseURL)/pagamentos/pix",
                               body: PixRequest(origemId: origemId.uuidString,
                                                destinoId: destinoId.uuidString,
@@ -70,7 +70,7 @@ class BancoAPIClient {
     }
 
     
-    func transferencia(origemId: UUID, destinoId: UUID, valor: Decimal) async throws -> ResultadoAPIDTO {
+    func transferencia(origemId: UUID, destinoId: UUID, valor: Double) async throws -> ResultadoAPIDTO {
         return try await post(url: "\(pagamentoBaseURL)/pagamentos/transferencia",
                               body: PixRequest(origemId: origemId.uuidString,
                                                destinoId: destinoId.uuidString,
@@ -107,7 +107,7 @@ class BancoAPIClient {
 struct ResultadoAPIDTO: Codable {
     let sucesso: Bool
     let id: UUID?
-    let novoValor: Decimal?
+    let novoValor: Double?
     let erro: String?
 
     // converte para o enum Resultado local (para manter compatibilidade com a UI)

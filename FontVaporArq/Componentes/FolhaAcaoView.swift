@@ -229,7 +229,7 @@ struct FolhaAcaoView: View {
             .replacingOccurrences(of: ",", with: ".")
             .trimmingCharacters(in: .whitespaces)
         
-        guard let valor = Decimal(string: valorNorm), valor > 0 else {
+        guard let valor = Double(valorNorm), valor > 0 else {
             withAnimation { erroLocal = "Insira um valor válido maior que zero." }
             return
         }
@@ -258,7 +258,7 @@ struct FolhaAcaoView: View {
         }
     }
     
-    private func executarOperacaoRemota(valor: Decimal) async throws -> ResultadoAPIDTO {
+    private func executarOperacaoRemota(valor: Double) async throws -> ResultadoAPIDTO {
         let contaId = conta.id
         let api = BancoAPIClient.shared
         
@@ -300,3 +300,4 @@ struct FolhaAcaoView: View {
             .foregroundStyle(.branco.opacity(0.5))
     }
 }
+

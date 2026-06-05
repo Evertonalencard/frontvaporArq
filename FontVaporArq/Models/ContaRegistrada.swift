@@ -13,7 +13,7 @@ class ContaRegistrada: ObservableObject, Identifiable {
     let nome: String
     let tipo: TipoConta
 
-    @Published var saldo: Decimal = 0
+    @Published var saldo: Double = 0
 
     init(id: UUID, nome: String, tipo: TipoConta) {
         self.id   = id
@@ -21,7 +21,7 @@ class ContaRegistrada: ObservableObject, Identifiable {
         self.tipo = tipo
     }
 
-    func atualizarSaldo(_ novoSaldo: Decimal) {
+    func atualizarSaldo(_ novoSaldo: Double) {
         saldo = novoSaldo
     }
 
