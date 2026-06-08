@@ -1,11 +1,3 @@
-//
-//  BancoAPIClient.swift
-//  FontVaporArq
-//
-//  Created by Éverton Alencar de Lima on 02/06/26.
-//
-
-// ProjectBanco/Services/BancoAPIClient.swift
 import Foundation
 
 private struct ValorRequest: Encodable {
@@ -16,22 +8,33 @@ private struct NomeRequest: Encodable {
     let nome: String
 }
 
-private struct PixRequest: Encodable {
-    let origemId: String
-    let destinoId: String
+private struct PagamentoRequest: Encodable {
+    let tipo: String
     let valor: Double
+    let idContaOrigem: String
+    let idContaDestino: String
+}
+
+private struct CartaoRequestDTO: Encodable {
+    let numero: String
+    let cvv: String
+    let validade: String
+    let titular: String
+    let limite: Double
+}
+
+private struct EmprestimoRequest: Encodable {
+    let valor: Double
+    let idConta: String
 }
 
 class BancoAPIClient {
     static let shared = BancoAPIClient()
 
-    // URLs base de cada serviço
     private let contaBaseURL = "https://contaprojvaporarquitetura-2.onrender.com"
-    private let pagamentoBaseURL  = "http://localhost:8081"  // Java/Spring
-    private let cartaoBaseURL     = "http://localhost:8082"  // Java/Spring
-    private let emprestimoBaseURL = "http://localhost:8083"  // Java/Spring
-
-    // MARK: - Conta Service (Vapor)
+    private let pagamentoBaseURL = "https://pagamentoservice-356z.onrender.com"
+    private let cartaoBaseURL = "https://cardservice.onrender.com"
+    private let emprestimoBaseURL = "https://emprestimoservice.onrender.com"
 
     func criarConta(nome: String, tipo: TipoConta) async throws -> ResultadoAPIDTO {
         let endpoint: String
@@ -47,37 +50,127 @@ class BancoAPIClient {
     }
 
     func depositar(contaId: UUID, valor: Double) async throws -> ResultadoAPIDTO {
-        return try await post(url: "\(contaBaseURL)/contas/\(contaId)/depositar",
-                              body: ValorRequest(valor: valor))
+        try await post(url: "\(contaBaseURL)/contas/\(contaId)/depositar", body: ValorRequest(valor: valor))
     }
 
     func sacar(contaId: UUID, valor: Double) async throws -> ResultadoAPIDTO {
-        return try await post(url: "\(contaBaseURL)/contas/\(contaId)/sacar",
-                              body: ValorRequest(valor: valor))
+        try await post(url: "\(contaBaseURL)/contas/\(contaId)/sacar", body: ValorRequest(valor: valor))
     }
 
     func saldo(contaId: UUID) async throws -> ResultadoAPIDTO {
-        return try await get(url: "\(contaBaseURL)/contas/\(contaId)/saldo")
+        try await get(url: "\(contaBaseURL)/contas/\(contaId)/saldo")
     }
 
-    // MARK: - Pagamento Service
-
-    func pix(origemId: UUID, destinoId: UUID, valor: Double) async throws -> ResultadoAPIDTO {
-        return try await post(url: "\(pagamentoBaseURL)/pagamentos/pix",
-                              body: PixRequest(origemId: origemId.uuidString,
-                                               destinoId: destinoId.uuidString,
-                                               valor: valor))
+    func registrarSalario(contaId: UUID, valor: Double) async throws -> ResultadoAPIDTO {
+        try await post(url: "\(contaBaseURL)/contas/\(contaId)/salario", body: ValorRequest(valor: valor))
     }
 
-    
-    func transferencia(origemId: UUID, destinoId: UUID, valor: Double) async throws -> ResultadoAPIDTO {
-        return try await post(url: "\(pagamentoBaseURL)/pagamentos/transferencia",
-                              body: PixRequest(origemId: origemId.uuidString,
-                                               destinoId: destinoId.uuidString,
-                                               valor: valor))
+    func buscarSalario(contaId: UUID) async throws -> Double {
+        let dto = try await get(url: "\(contaBaseURL)/contas/\(contaId)/salario")
+        return dto.novoValor ?? 0
     }
 
-    // MARK: - Helpers HTTP genéricos
+    func pagar(tipo: String, origemId: UUID, destinoId: UUID, valor: Double) async throws -> PagamentoResponseDTO {
+        let body = PagamentoRequest(
+            tipo: tipo,
+            valor: valor,
+            idContaOrigem: origemId.uuidString,
+            idContaDestino: destinoId.uuidString
+        )
+
+        var request = URLRequest(url: URL(string: "\(pagamentoBaseURL)/pagamentos")!)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        if let http = response as? HTTPURLResponse {
+            print("STATUS:", http.statusCode, "URL:", request.url?.absoluteString ?? "")
+        }
+        if let json = String(data: data, encoding: .utf8) {
+            print("BODY:", json)
+        }
+
+        return try JSONDecoder().decode(PagamentoResponseDTO.self, from: data)
+    }
+
+    func solicitarEmprestimo(contaId: UUID, valor: Double) async throws -> EmprestimoResponseDTO {
+        let body = EmprestimoRequest(
+            valor: valor,
+            idConta: contaId.uuidString
+        )
+
+        var request = URLRequest(url: URL(string: "\(emprestimoBaseURL)/emprestimos")!)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        if let http = response as? HTTPURLResponse {
+            print("STATUS:", http.statusCode, "URL:", request.url?.absoluteString ?? "")
+        }
+        if let json = String(data: data, encoding: .utf8) {
+            print("BODY:", json)
+        }
+
+        return try JSONDecoder().decode(EmprestimoResponseDTO.self, from: data)
+    }
+
+    func solicitarCartao(titular: String, limite: Double) async throws -> CartaoDTO {
+        let body = CartaoRequestDTO(
+            numero: UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(16).description,
+            cvv: String(Int.random(in: 100...999)),
+            validade: "12/30",
+            titular: titular,
+            limite: limite
+        )
+
+        _ = try await postString(url: "\(cartaoBaseURL)/card/solicitar", body: body)
+
+        return CartaoDTO(
+            id: Int64.random(in: 1...999999),
+            numero: body.numero,
+            cvv: body.cvv,
+            validade: body.validade,
+            titular: body.titular,
+            limite: body.limite,
+            ativo: true
+        )
+    }
+
+    func aumentarLimite(cartaoId: Int64) async throws -> String {
+        var request = URLRequest(url: URL(string: "\(cartaoBaseURL)/card/aumento/\(cartaoId)")!)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        if let http = response as? HTTPURLResponse {
+            print("STATUS:", http.statusCode, "URL:", request.url?.absoluteString ?? "")
+        }
+        if let body = String(data: data, encoding: .utf8) {
+            print("BODY:", body)
+            return body
+        }
+
+        return "Sem resposta"
+    }
+
+    func buscarCartao(cartaoId: Int64) async throws -> CartaoDTO {
+        let url = "\(cartaoBaseURL)/card/\(cartaoId)"
+        let (data, response) = try await URLSession.shared.data(from: URL(string: url)!)
+
+        if let http = response as? HTTPURLResponse {
+            print("STATUS:", http.statusCode, "URL:", url)
+        }
+        if let json = String(data: data, encoding: .utf8) {
+            print("BODY:", json)
+        }
+
+        return try JSONDecoder().decode(CartaoDTO.self, from: data)
+    }
 
     private func post<B: Encodable>(url: String, body: B) async throws -> ResultadoAPIDTO {
         var request = URLRequest(url: URL(string: url)!)
@@ -97,38 +190,45 @@ class BancoAPIClient {
         return try JSONDecoder().decode(ResultadoAPIDTO.self, from: data)
     }
 
-    private func get(url: String) async throws -> ResultadoAPIDTO {
-        let (data, _) = try await URLSession.shared.data(from: URL(string: url)!)
-        return try JSONDecoder().decode(ResultadoAPIDTO.self, from: data)
-    }
-}
+    private func postString<B: Encodable>(url: String, body: B) async throws -> String {
+        var request = URLRequest(url: URL(string: url)!)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(body)
 
-// DTO que espelha o ResultadoDTO do backend
-struct ResultadoAPIDTO: Codable {
-    let sucesso: Bool
-    let id: UUID?
-    let novoValor: Double?
-    let erro: String?
+        let (data, response) = try await URLSession.shared.data(for: request)
 
-    // converte para o enum Resultado local (para manter compatibilidade com a UI)
-    func toResultado() -> Resultado {
-        if sucesso, let valor = novoValor {
-            return .sucesso(novoValor: valor)
+        if let http = response as? HTTPURLResponse {
+            print("STATUS:", http.statusCode, "URL:", url)
         }
-        return .falha(erro: erro ?? "Erro desconhecido")
+        if let json = String(data: data, encoding: .utf8) {
+            print("BODY:", json)
+            return json
+        }
+
+        return ""
+    }
+
+    private func get(url: String) async throws -> ResultadoAPIDTO {
+        let (data, response) = try await URLSession.shared.data(from: URL(string: url)!)
+
+        if let http = response as? HTTPURLResponse {
+            print("STATUS:", http.statusCode, "URL:", url)
+        }
+        if let json = String(data: data, encoding: .utf8) {
+            print("BODY:", json)
+        }
+
+        return try JSONDecoder().decode(ResultadoAPIDTO.self, from: data)
     }
 }
 
 extension BancoAPIClient {
     func listarContas() async throws -> [ContaDTO] {
-        let (data, _) = try await URLSession.shared.data(
-            from: URL(string: "\(contaBaseURL)/contas")!
-        )
-
+        let (data, _) = try await URLSession.shared.data(from: URL(string: "\(contaBaseURL)/contas")!)
         if let json = String(data: data, encoding: .utf8) {
             print("JSON /contas:", json)
         }
-
         return try JSONDecoder().decode([ContaDTO].self, from: data)
     }
 }

@@ -76,13 +76,17 @@ struct DashboardContaView: View {
 
     private func processarResultado(_ resultado: Resultado) {
         switch resultado {
-        case .sucesso(let valor):
-            // atualiza o saldo localmente com o valor retornado pela API
-            conta.atualizarSaldo(valor)
-            feedback = FeedbackBancario(
-                mensagem: "Operação realizada! Saldo: \(formatarMoeda(valor))",
-                sucesso: true
-            )
+        case .sucesso:
+            feedback = FeedbackBancario(mensagem: "Operação realizada! Atualizando saldo...", sucesso: true)
+            Task {
+                if let dto = try? await BancoAPIClient.shared.saldo(contaId: conta.id),
+                   let novoSaldo = dto.novoValor {
+                    await MainActor.run {
+                        conta.atualizarSaldo(novoSaldo)
+                        feedback = FeedbackBancario(mensagem: "Operação realizada! Saldo \(formatarMoeda(novoSaldo))", sucesso: true)
+                    }
+                }
+            }
         case .falha(let erro):
             feedback = FeedbackBancario(mensagem: erro, sucesso: false)
         }
